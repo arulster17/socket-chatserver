@@ -22,10 +22,24 @@ int main() {
 
     connect(client_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
 
-    // Send a message
+    // Listen for server message
+    char buffer[1024];
+    int bytes_read = recv(client_fd, buffer, sizeof(buffer)-1, 0);
+    if (bytes_read > 0) {
+        buffer[bytes_read] = '\0';
+        printf("Server says: %s", buffer);
+    }
 
-    char msg[] = "Hello from client!";
-    send(client_fd, msg, strlen(msg), 0);
+    // Respond to server
+    char name[100];
+    fgets(name, sizeof(name), stdin);
 
+    send(client_fd, name, strlen(name), 0);
 
+    // Listen for server response
+    bytes_read = recv(client_fd, buffer, sizeof(buffer)-1, 0);
+    if (bytes_read > 0) {
+        buffer[bytes_read] = '\0';
+        printf("Server says: %s", buffer);
+    }
 }
