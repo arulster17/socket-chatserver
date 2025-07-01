@@ -8,7 +8,8 @@
 #include <unistd.h>
 #define PORT 8080
 
-int main(int argc, char const* argv[]) {
+//int main(int argc, char const* argv[]) {
+int main() {
     // Set up server socket
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
@@ -28,8 +29,16 @@ int main(int argc, char const* argv[]) {
     // Print client ip and port
     char *ip_str = inet_ntoa(client_addr.sin_addr);
     printf("Connection from %s:%d\n", ip_str, ntohs(client_addr.sin_port));
-    
 
+
+    // Listen for client message
+    char buffer[1024];
+    int bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+
+    if (bytes_read > 0) {
+        buffer[bytes_read] = '\0';  // null-terminate the received message
+        printf("Client says: %s\n", buffer);
+    }
 
 
 }
