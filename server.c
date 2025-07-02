@@ -30,23 +30,20 @@ int main() {
     char *ip_str = inet_ntoa(client_addr.sin_addr);
     printf("Connection from %s:%d\n", ip_str, ntohs(client_addr.sin_port));
 
-    // Send client message
-    char name_request[] = "Hello client! What is your name?\n";
-    send(client_fd, name_request, strlen(name_request), 0);
+    char received_msg[] = "Received Message!\n";
 
+    // Listen for client messages
+    char buffer[1024];
+    int n;
+    while ((n = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0) {
+        buffer[n] = '\0';
+        printf("Client: %s", buffer);
 
-    // Listen for client response
-    char name_buffer[10];
-    int bytes_read = recv(client_fd, name_buffer, sizeof(name_buffer) - 1, 0);
-
-    if (bytes_read > 0) {
-        name_buffer[bytes_read] = '\0';
-        printf("Client says: %s\n", name_buffer);
+        // Send acknowledgment (testing)
+        send(client_fd, received_msg, strlen(received_msg), 0);
+        
     }
-    
-    // Say hello!
-    char hello_message[20];
-    snprintf(hello_message, sizeof(hello_message), "Hello %s!\n", name_buffer);
-    send(client_fd, hello_message, strlen(hello_message), 0);
+    printf("Client disconnected");
+    close(client_fd);
 }
 
