@@ -23,7 +23,7 @@ void *receive_loop(void *arg) {
     int n;
     while ((n = recv(sock, buffer, sizeof(buffer) - 1, 0)) > 0) {
         buffer[n] = '\0';
-        printf("Server: %s", buffer);
+        printf("%s", buffer);
     }
     printf("Server disconnected.\n");
     close(sock);

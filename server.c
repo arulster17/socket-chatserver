@@ -53,24 +53,24 @@ void *handle_client(void *arg) {
     int thread_id = t_args->id;
     free(t_args);
     int n;
-    char buffer[1024];
+    char buffer[1000];
+    char buffer2[2000];
 
     // listen for client messages constantly
-    while((n = recv(client_fd, buffer, sizeof(buffer)-1, 0)) > 0) {
+    while((n = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0) {
         // Received message
         buffer[n] = '\0';
         printf("Client %d: %s", client_list[thread_id].name, buffer);
         // Reflect message
-        send(client_fd, buffer, strlen(buffer), 0);
+        //send(client_fd, buffer, strlen(buffer), 0);
 
-        // try sending all active clients
-        snprintf(buffer, sizeof(buffer), "Active clients:\n");;
-        send(client_fd, buffer, strlen(buffer), 0);
+        // send message to other clients
         for (int i = 0; i < MAX_CLIENTS; i++) {
             if(i != thread_id && !client_list[i].free) {
-                // All other active threads
-                snprintf(buffer, sizeof(buffer), "Client %d\n", client_list[i].name);
-                send(client_fd, buffer, strlen(buffer), 0);
+                snprintf(buffer2, sizeof(buffer2), "Client %d: %s", 
+                        client_list[thread_id].name, buffer);
+
+                send(client_list[i].fd, buffer2, strlen(buffer2), 0);
             }
         }
 
