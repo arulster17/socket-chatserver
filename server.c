@@ -13,24 +13,32 @@
 #define PORT 8080
 #define MAX_CLIENTS 2
 
-int server_fd;
-int client_list[MAX_CLIENTS];
-int available_client[MAX_CLIENTS];
-dispatch_semaphore_t client_slots;
-pthread_mutex_t shared_mem_lock;
+struct client_information {
+    int fd;
+    int free;
+    int name;
+};
 
 struct threadargs {
     int fd;
     int id;
 };
 
+int server_fd;
+struct client_information client_list[MAX_CLIENTS];
+dispatch_semaphore_t client_slots;
+pthread_mutex_t shared_mem_lock;
+
+
+
+
 void sigint_handler(int arg) {
     printf("\nShutting down the server\n");
     close(server_fd);
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        if(!available_client[i]) {
+        if(!client_list[i].free) {
             // Goodbye clients
-            close(client_list[i]);
+            close(client_list[i].fd);
         }
     }
     pthread_mutex_destroy(&shared_mem_lock);
@@ -54,13 +62,16 @@ void *handle_client(void *arg) {
         printf("Client: %s", buffer);
         // Reflect message
         send(client_fd, buffer, strlen(buffer), 0);
+
+        // try sending all active clients
+
     }
     // Connection closed
     printf("Client disconnected\n");
    
     // Mark slot available
     pthread_mutex_lock(&shared_mem_lock);
-    available_client[thread_id] = 1;
+    client_list[thread_id].free = 1;
     pthread_mutex_unlock(&shared_mem_lock);
 
     // Signal semaphore and close client socket
@@ -77,7 +88,8 @@ int main() {
     pthread_mutex_init(&shared_mem_lock, NULL);
     client_slots = dispatch_semaphore_create(MAX_CLIENTS);
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        available_client[i] = 1;
+        printf("%d\n", i);
+        client_list[i].free = 1;
     }
 
     // Set up SIGINT handler
@@ -112,12 +124,16 @@ int main() {
         pthread_t handle_client_thread;
         int client_fd = accept(server_fd, (struct sockaddr*) &client_addr, &client_addrlen);
 
-        struct threadargs *ta_ptr = malloc(sizeof(struct threadargs));
-        ta_ptr->fd=client_fd;
-        
-        // Given we are here, there must be an open client slot, find first
+                // Given we are here, there must be an open client slot, find first
         int openslot = 0;
-        while (openslot < MAX_CLIENTS && !available_client[openslot]) {
+        
+        pthread_mutex_lock(&shared_mem_lock);
+        while (openslot < MAX_CLIENTS) {
+            printf("checking slot %d\n", openslot);
+            printf("value is %d\n", client_list[openslot].free);
+            if(client_list[openslot].free) {
+                break;
+            }
             openslot++;
         }
         if (openslot == MAX_CLIENTS) {
@@ -126,14 +142,17 @@ int main() {
             while(1) {}
             // this is called good code
         }
-        ta_ptr->id=openslot;
-
         // Register new thread
-        pthread_mutex_lock(&shared_mem_lock);
         printf("placed at slot %d\n", openslot);
-        client_list[openslot] = ta_ptr->fd;
-        available_client[openslot] = 0;
+        client_list[openslot].fd = client_fd;
+        client_list[openslot].free = 0;
         pthread_mutex_unlock(&shared_mem_lock);
+        
+        struct threadargs *ta_ptr = malloc(sizeof(struct threadargs));
+        ta_ptr->fd=client_fd;
+        ta_ptr->id=openslot;
+        //ta_ptr->name=cnt;
+
         // if this deadlocks i will cry
 
         pthread_create(&handle_client_thread, NULL, handle_client, ta_ptr);
