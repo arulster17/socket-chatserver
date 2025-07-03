@@ -11,7 +11,7 @@
 #include <dispatch/dispatch.h>
 
 #define PORT 8080
-#define MAX_CLIENTS 2
+#define MAX_CLIENTS 9
 
 struct client_information {
     int fd;
@@ -59,11 +59,20 @@ void *handle_client(void *arg) {
     while((n = recv(client_fd, buffer, sizeof(buffer)-1, 0)) > 0) {
         // Received message
         buffer[n] = '\0';
-        printf("Client: %s", buffer);
+        printf("Client %d: %s", client_list[thread_id].name, buffer);
         // Reflect message
         send(client_fd, buffer, strlen(buffer), 0);
 
         // try sending all active clients
+        snprintf(buffer, sizeof(buffer), "Active clients:\n");;
+        send(client_fd, buffer, strlen(buffer), 0);
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if(i != thread_id && !client_list[i].free) {
+                // All other active threads
+                snprintf(buffer, sizeof(buffer), "Client %d\n", client_list[i].name);
+                send(client_fd, buffer, strlen(buffer), 0);
+            }
+        }
 
     }
     // Connection closed
@@ -146,6 +155,7 @@ int main() {
         printf("placed at slot %d\n", openslot);
         client_list[openslot].fd = client_fd;
         client_list[openslot].free = 0;
+        client_list[openslot].name = cnt;
         pthread_mutex_unlock(&shared_mem_lock);
         
         struct threadargs *ta_ptr = malloc(sizeof(struct threadargs));
