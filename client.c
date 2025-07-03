@@ -50,6 +50,11 @@ int main() {
 
     connect(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
 
+    // poke to force handshake
+    char poke = '\0';
+    send(socket_fd, &poke, 1, 0);
+    
+
     // Set up sending and receiving threads
     pthread_t send_thread, recv_thread;
     pthread_create(&send_thread, NULL, send_loop, &socket_fd);

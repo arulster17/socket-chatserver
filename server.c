@@ -91,7 +91,7 @@ void *handle_client(void *arg) {
                         client_list[thread_id].name, buffer);
 
                 send(client_list[i].fd, buffer2, strlen(buffer2), 0);
-                printf("Sending to client %d: %s", i, buffer2);
+                printf("Sending to client %d: %s", client_list[i].name, buffer2);
                 print_peer_info(client_list[i].fd);
 
             }
