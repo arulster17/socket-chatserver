@@ -30,6 +30,21 @@ dispatch_semaphore_t client_slots;
 pthread_mutex_t shared_mem_lock;
 
 
+void print_peer_info(int fd) {
+    struct sockaddr_in addr;
+    socklen_t addr_len = sizeof(addr);
+
+    if (getpeername(fd, (struct sockaddr *)&addr, &addr_len) == -1) {
+        perror("getpeername failed");
+        return;
+    }
+
+    char ip_str[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(addr.sin_addr), ip_str, sizeof(ip_str));
+    int port = ntohs(addr.sin_port);
+
+    printf("Socket fd %d connected to %s:%d\n", fd, ip_str, port);
+}
 
 
 void sigint_handler(int arg) {
@@ -55,6 +70,11 @@ void *handle_client(void *arg) {
     int n;
     char buffer[1000];
     char buffer2[2000];
+    char poke;
+    
+    // handle poke
+    n = recv(client_fd, &poke, 1, 0);
+
 
     // listen for client messages constantly
     while((n = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0) {
@@ -71,6 +91,9 @@ void *handle_client(void *arg) {
                         client_list[thread_id].name, buffer);
 
                 send(client_list[i].fd, buffer2, strlen(buffer2), 0);
+                printf("Sending to client %d: %s", i, buffer2);
+                print_peer_info(client_list[i].fd);
+
             }
         }
 
@@ -132,7 +155,7 @@ int main() {
         // Build thread and arguments
         pthread_t handle_client_thread;
         int client_fd = accept(server_fd, (struct sockaddr*) &client_addr, &client_addrlen);
-
+        printf("accepted \n");
                 // Given we are here, there must be an open client slot, find first
         int openslot = 0;
         
