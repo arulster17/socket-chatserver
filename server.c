@@ -90,8 +90,14 @@ void *handle_client(void *arg) {
                 snprintf(buffer2, sizeof(buffer2), "Client %d: %s", 
                         client_list[thread_id].name, buffer);
 
-                send(client_list[i].fd, buffer2, strlen(buffer2), 0);
                 printf("Sending to client %d: %s", client_list[i].name, buffer2);
+                int sendsuc = send(client_list[i].fd, buffer2, strlen(buffer2), 0);
+                if (sendsuc == -1) {
+                    printf("send failed\n");
+                }
+                else {
+                    printf("send succeeded\n");
+                }
                 print_peer_info(client_list[i].fd);
 
             }

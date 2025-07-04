@@ -7,6 +7,21 @@
 #include <pthread.h>
 
 
+void print_peer_info(int sockfd) {
+    struct sockaddr_in addr;
+    socklen_t addr_len = sizeof(addr);
+
+    if (getpeername(sockfd, (struct sockaddr*)&addr, &addr_len) == -1) {
+        perror("getpeername failed");
+        return;
+    }
+
+    char ip_str[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(addr.sin_addr), ip_str, sizeof(ip_str));
+    int port = ntohs(addr.sin_port);
+
+    printf("Socket %d connected to %s:%d\n", sockfd, ip_str, port);
+}
 
 void *send_loop(void *arg) {
     int socket = *(int*) arg;
@@ -39,7 +54,7 @@ int main() {
         printf("client_fd is -1\n");
         exit(1);
     }
-
+    
     // Connect to server
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
@@ -49,6 +64,8 @@ int main() {
     inet_pton(AF_INET, "192.168.86.133", &server_addr.sin_addr);
 
     connect(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    
+    print_peer_info(socket_fd);
 
     // poke to force handshake
     char poke = '\0';
