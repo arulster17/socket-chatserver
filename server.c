@@ -86,7 +86,7 @@ void *handle_client(void *arg) {
 
         // send message to other clients
         for (int i = 0; i < MAX_CLIENTS; i++) {
-            if(i != thread_id && !client_list[i].free) {
+            if(!client_list[i].free) {
                 snprintf(buffer2, sizeof(buffer2), "Client %d: %s", 
                         client_list[thread_id].name, buffer);
 

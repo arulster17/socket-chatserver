@@ -27,6 +27,8 @@ void *send_loop(void *arg) {
     int socket = *(int*) arg;
     char msg[1024];
     while (fgets(msg, sizeof(msg), stdin)) {
+        printf("\033[F\033[K");
+
         send(socket, msg, strlen(msg), 0);
     }
     return NULL;
