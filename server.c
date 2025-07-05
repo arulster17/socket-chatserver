@@ -19,23 +19,6 @@ dispatch_semaphore_t client_slots;
 pthread_mutex_t shared_mem_lock;
 
 
-void print_peer_info(int fd) {
-    struct sockaddr_in addr;
-    socklen_t addr_len = sizeof(addr);
-
-    if (getpeername(fd, (struct sockaddr *)&addr, &addr_len) == -1) {
-        perror("getpeername failed");
-        return;
-    }
-
-    char ip_str[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &(addr.sin_addr), ip_str, sizeof(ip_str));
-    int port = ntohs(addr.sin_port);
-
-    printf("Socket fd %d connected to %s:%d\n", fd, ip_str, port);
-}
-
-
 void sigint_handler(int arg) {
     printf("\nShutting down the server\n");
     close(server_fd);
@@ -217,15 +200,15 @@ int main() {
             raise(SIGINT);
             // this is called good code
         }
-                
+        
         // handle poke
         char poke;
         int n = recv(client_fd, &poke, 1, 0);
 
         // get username
-        char username[MAX_NAME_LEN+1];
         int len;
         n = recv(client_fd, &len, 1, 0);
+        char username[MAX_NAME_LEN+1];
         n = recv(client_fd, &username, len, 0);
         username[len] = '\0';
 
@@ -253,35 +236,6 @@ int main() {
         printf("%d connected to server\n", cnt);
         cnt++;
     }
-
-
-/*
-
-
-
-
-
-    // Print client ip and port
-    char *ip_str = inet_ntoa(client_addr.sin_addr);
-    printf("Connection from %s:%d\n", ip_str, ntohs(client_addr.sin_port));
-    printf("server_fd: %d\n", server_fd);
-    printf("client_fd: %d\n", client_fd);
-    char received_msg[] = "Received Message!\n";
-
-    // Listen for client messages
-    char buffer[1024];
-    int n;
-    while ((n = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0) {
-        buffer[n] = '\0';
-        printf("Client: %s", buffer);
-
-        // Send acknowledgment (testing)
-        send(client_fd, received_msg, strlen(received_msg), 0);
-        
-    }
-    printf("Client disconnected");
-    close(client_fd);
-    */
 }
 
 

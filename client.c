@@ -1,64 +1,36 @@
 // client code
 #include "commons.h"
 
-void read_string(char **line_ptr, int *len, int maxlen) {
-    size_t slen = 0;
-    ssize_t read = getline(line_ptr, &slen, stdin);
-    char *line = *line_ptr;
-    // read = num letters + newline/eof
-    
-    if (read == -1) {
-        printf("read == -1\n");
-        exit(1);
-    }
-    if (read > 0 && line[read - 1] == '\n') {
-            line[--read] = '\0';
-    }
-    int chars_to_read = maxlen;
-    if (read < chars_to_read) {
-        chars_to_read = read;
-    }
-    *len = chars_to_read;
-    // line is now the chars + \0
-}
-
-void print_peer_info(int sockfd) {
-    struct sockaddr_in addr;
-    socklen_t addr_len = sizeof(addr);
-
-    if (getpeername(sockfd, (struct sockaddr*)&addr, &addr_len) == -1) {
-        perror("getpeername failed");
-        return;
-    }
-
-    char ip_str[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &(addr.sin_addr), ip_str, sizeof(ip_str));
-    int port = ntohs(addr.sin_port);
-
-    printf("Socket %d connected to %s:%d\n", sockfd, ip_str, port);
-}
-
 void *send_loop(void *arg) {
     int socket = *(int*) arg;
-    char msg[1024];
-    while (fgets(msg, sizeof(msg), stdin)) {
-        printf("\033[F\033[K");
+    
+    char *msg = NULL;
+    int chars_to_read;
 
-        send(socket, msg, strlen(msg), 0);
+    while ((chars_to_read = read_n_string(&msg, -1)) > 0) {
+        printf("\033[F\033[K");
+        msg[chars_to_read] = '\n';
+        send(socket, msg, chars_to_read+1, 0);
+        free(msg);
+        msg = NULL;
     }
+
+    // EOF or some weird error
+    close(socket);
+    printf("send_loop ended\n");
     return NULL;
 }
 
 void *receive_loop(void *arg) {
-    int sock = *(int*) arg;
+    int socket = *(int*) arg;
     char buffer[1024];
     int n;
-    while ((n = recv(sock, buffer, sizeof(buffer) - 1, 0)) > 0) {
+    while ((n = recv(socket, buffer, sizeof(buffer) - 1, 0)) > 0) {
         buffer[n] = '\0';
         printf("%s", buffer);
     }
     printf("Server disconnected.\n");
-    close(sock);
+    close(socket);
     exit(0);
 }
 
@@ -72,13 +44,7 @@ int main() {
         printf("client_fd is -1\n");
         exit(1);
     }
-    printf("Enter username (max 16 chars): ");
-    fflush(stdout);
-
-    char *line = NULL;
-    int chars_to_read;
-    read_string(&line, &chars_to_read, MAX_NAME_LEN);
-    printf("line = %s\n", line);
+    
     // Connect to server
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
@@ -97,6 +63,13 @@ int main() {
 
     // set up username
     // send length
+    printf("Enter username (max 16 chars): ");
+    fflush(stdout);
+    char *line = NULL;
+    int chars_to_read = read_n_string(&line, MAX_NAME_LEN);
+    if (chars_to_read == -1) {
+        exit(1);
+    }
     send(socket_fd, &chars_to_read, 1, 0);
     send(socket_fd, line, chars_to_read, 0);
     free(line);
