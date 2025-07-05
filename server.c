@@ -1,21 +1,5 @@
 // server code
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <signal.h>
-#include <dispatch/dispatch.h>
-#include <time.h>
-#include <sys/ioctl.h>
-
-
-#define PORT 8080
-#define MAX_CLIENTS 10
-#define MAX_NAME_LEN 16
+#include "commons.h"
 
 struct client_information {
     int fd;
@@ -55,7 +39,9 @@ void print_peer_info(int fd) {
 void sigint_handler(int arg) {
     printf("\nShutting down the server\n");
     close(server_fd);
+    printf("e\n");
     pthread_mutex_lock(&shared_mem_lock);
+    printf("f\n");
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if(!client_list[i].free) {
             // Goodbye clients
