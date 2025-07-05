@@ -9,14 +9,17 @@
 #include <pthread.h>
 #include <signal.h>
 #include <dispatch/dispatch.h>
+#include <time.h>
 
 #define PORT 8080
-#define MAX_CLIENTS 9
+#define MAX_CLIENTS 10
+#define MAX_NAME_LEN 20
 
 struct client_information {
     int fd;
     int free;
-    int name;
+    char name[MAX_NAME_LEN];
+    int color;
 };
 
 struct threadargs {
@@ -50,12 +53,14 @@ void print_peer_info(int fd) {
 void sigint_handler(int arg) {
     printf("\nShutting down the server\n");
     close(server_fd);
+    pthread_mutex_lock(&shared_mem_lock);
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if(!client_list[i].free) {
             // Goodbye clients
             close(client_list[i].fd);
         }
     }
+    pthread_mutex_unlock(&shared_mem_lock);
     pthread_mutex_destroy(&shared_mem_lock);
     exit(0);
 }
@@ -70,27 +75,24 @@ void *handle_client(void *arg) {
     int n;
     char buffer[1000];
     char buffer2[2000];
-    char poke;
     
-    // handle poke
-    n = recv(client_fd, &poke, 1, 0);
-
-
     // listen for client messages constantly
     while((n = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0) {
         // Received message
         buffer[n] = '\0';
-        printf("Client %d: %s", client_list[thread_id].name, buffer);
+        
+        pthread_mutex_lock(&shared_mem_lock);
+        printf("\033[1;32m%s\033[0m: %s", client_list[thread_id].name, buffer);
         // Reflect message
         //send(client_fd, buffer, strlen(buffer), 0);
 
         // send message to other clients
         for (int i = 0; i < MAX_CLIENTS; i++) {
             if(!client_list[i].free) {
-                snprintf(buffer2, sizeof(buffer2), "Client %d: %s", 
-                        client_list[thread_id].name, buffer);
+                snprintf(buffer2, sizeof(buffer2), "\033[1;%dm%s\033[0m: %s", 
+                        client_list[thread_id].color, client_list[thread_id].name, buffer);
 
-                printf("Sending to client %d: %s", client_list[i].name, buffer2);
+                printf("Sending to client %s: %s", client_list[i].name, buffer2);
                 int sendsuc = send(client_list[i].fd, buffer2, strlen(buffer2), 0);
                 if (sendsuc == -1) {
                     printf("send failed\n");
@@ -102,6 +104,7 @@ void *handle_client(void *arg) {
 
             }
         }
+        pthread_mutex_unlock(&shared_mem_lock);
 
     }
     // Connection closed
@@ -121,7 +124,9 @@ void *handle_client(void *arg) {
 
 //int main(int argc, char const* argv[]) {
 int main() {
-    
+    // Seed random
+    srand(time(NULL));
+
     // Initialize synchronization variables
     pthread_mutex_init(&shared_mem_lock, NULL);
     client_slots = dispatch_semaphore_create(MAX_CLIENTS);
@@ -162,7 +167,7 @@ int main() {
         pthread_t handle_client_thread;
         int client_fd = accept(server_fd, (struct sockaddr*) &client_addr, &client_addrlen);
         printf("accepted \n");
-                // Given we are here, there must be an open client slot, find first
+        // Given we are here, there must be an open client slot, find first
         int openslot = 0;
         
         pthread_mutex_lock(&shared_mem_lock);
@@ -177,14 +182,26 @@ int main() {
         if (openslot == MAX_CLIENTS) {
             // Something wacky has happened
             printf("openslot == MAX_CLIENTS\n");
-            while(1) {}
+            raise(SIGINT);
             // this is called good code
         }
+                
+        // handle poke
+        char poke;
+        int n = recv(client_fd, &poke, 1, 0);
+
+        // get username
+        char username[MAX_NAME_LEN];
+        n = recv(client_fd, &username, MAX_NAME_LEN-1, 0);
+        username[n] = '\0';
+
+        printf("hello %s\n", username);
         // Register new thread
-        printf("placed at slot %d\n", openslot);
         client_list[openslot].fd = client_fd;
         client_list[openslot].free = 0;
-        client_list[openslot].name = cnt;
+        strncpy(client_list[openslot].name, username, n);
+        client_list[openslot].color = 31+(rand() % 6);
+
         pthread_mutex_unlock(&shared_mem_lock);
         
         struct threadargs *ta_ptr = malloc(sizeof(struct threadargs));

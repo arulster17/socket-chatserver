@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 
+#define MAX_NAME_LEN 20
 
 void print_peer_info(int sockfd) {
     struct sockaddr_in addr;
@@ -56,7 +57,13 @@ int main() {
         printf("client_fd is -1\n");
         exit(1);
     }
-    
+    char username[MAX_NAME_LEN];
+    printf("Enter username (max 16 chars): ");
+    fgets(username, MAX_NAME_LEN, stdin);
+    int user_len = strlen(username);
+    while(username[user_len-1] == '\r' || username[user_len-1] == '\n') {
+        username[--user_len] = '\0';
+    } 
     // Connect to server
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
@@ -72,7 +79,10 @@ int main() {
     // poke to force handshake
     char poke = '\0';
     send(socket_fd, &poke, 1, 0);
+
+    // set up username
     
+    send(socket_fd, username, user_len, 0);
 
     // Set up sending and receiving threads
     pthread_t send_thread, recv_thread;
