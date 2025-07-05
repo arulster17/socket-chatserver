@@ -10,10 +10,12 @@
 #include <signal.h>
 #include <dispatch/dispatch.h>
 #include <time.h>
+#include <sys/ioctl.h>
+
 
 #define PORT 8080
 #define MAX_CLIENTS 10
-#define MAX_NAME_LEN 20
+#define MAX_NAME_LEN 16
 
 struct client_information {
     int fd;
@@ -75,7 +77,41 @@ void *handle_client(void *arg) {
     int n;
     char buffer[1000];
     char buffer2[2000];
+   
+    // clear screen and make welcome bar
+    char clrscrn[] = "\033[2J\033[H";
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    char *weq = (char *) malloc(w.ws_col+1);
+    memset(weq, '=', w.ws_col);
+    weq[w.ws_col] = '\n';
+    char welcome[] = "Welcome to the chatroom!\nCurrent users:";
+    pthread_mutex_lock(&shared_mem_lock);
+    send(client_fd, clrscrn, strlen(clrscrn), 0);
+    send(client_fd, weq, w.ws_col+1, 0);
+    send(client_fd, welcome, strlen(welcome), 0);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (!client_list[i].free) {
+            snprintf(buffer2, sizeof(buffer2), " \033[1;%dm%s\033[0m", 
+                        client_list[i].color, client_list[i].name);
+            send(client_fd, buffer2, strlen(buffer2), 0);
+
+            // Let others know that you joined
+            if (i != thread_id) {
+                snprintf(buffer2, sizeof(buffer2), ">>> \033[1;%dm%s\033[0m joined the room\n", 
+                        client_list[thread_id].color, client_list[thread_id].name);
+                send(client_list[i].fd, buffer2, strlen(buffer2), 0);
+
+            }
+        }
+    }
+    int nl = '\n';
+    send(client_fd, &nl, 1, 0);
+
+    pthread_mutex_unlock(&shared_mem_lock);
     
+    free(weq);
+
     // listen for client messages constantly
     while((n = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0) {
         // Received message
@@ -108,13 +144,23 @@ void *handle_client(void *arg) {
 
     }
     // Connection closed
-    printf("Client disconnected\n");
+    printf("\033[1;%dm%s\033[0m disconnected\n", 
+            client_list[thread_id].color, client_list[thread_id].name);
    
-    // Mark slot available
+    // Mark slot available and notify others
     pthread_mutex_lock(&shared_mem_lock);
     client_list[thread_id].free = 1;
-    pthread_mutex_unlock(&shared_mem_lock);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (!client_list[i].free) {
+            snprintf(buffer2, sizeof(buffer2), "<<< \033[1;%dm%s\033[0m left the room\n", 
+                    client_list[thread_id].color, client_list[thread_id].name);
+            send(client_list[i].fd, buffer2, strlen(buffer2), 0);
+        }
+    }
 
+    pthread_mutex_unlock(&shared_mem_lock);
+    
+    
     // Signal semaphore and close client socket
     dispatch_semaphore_signal(client_slots);
     close(client_fd);

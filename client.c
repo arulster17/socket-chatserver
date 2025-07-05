@@ -6,7 +6,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 
-#define MAX_NAME_LEN 20
+#define MAX_NAME_LEN 16
 
 void print_peer_info(int sockfd) {
     struct sockaddr_in addr;
@@ -57,12 +57,16 @@ int main() {
         printf("client_fd is -1\n");
         exit(1);
     }
-    char username[MAX_NAME_LEN];
+    char username[MAX_NAME_LEN+1];
     printf("Enter username (max 16 chars): ");
-    fgets(username, MAX_NAME_LEN, stdin);
+    fgets(username, MAX_NAME_LEN+1, stdin);
     int user_len = strlen(username);
+    if(user_len > MAX_NAME_LEN) {
+        user_len = MAX_NAME_LEN;
+    }
+    username[user_len] = '\0';
     while(username[user_len-1] == '\r' || username[user_len-1] == '\n') {
-        username[--user_len] = '\0';
+        username[--user_len] = '\n';
     } 
     // Connect to server
     struct sockaddr_in server_addr;
@@ -93,22 +97,6 @@ int main() {
     // Wait for threads to finish i guess
     pthread_join(send_thread, NULL);
     pthread_join(recv_thread, NULL);
-
-    // Listen for server message
-    char buffer[1024];
-    int bytes_read = recv(socket_fd, buffer, sizeof(buffer)-1, 0);
-    if (bytes_read > 0) {
-        buffer[bytes_read] = '\0';
-        printf("Server says: %s", buffer);
-    }
-
-    // Respond to server
-    char name[100];
-    fgets(name, sizeof(name), stdin);
-
-    send(socket_fd, name, strlen(name), 0);
-
-    close(socket_fd);
 }
 
 
