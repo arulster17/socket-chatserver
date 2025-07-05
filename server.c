@@ -146,7 +146,6 @@ int main() {
     pthread_mutex_init(&shared_mem_lock, NULL);
     client_slots = dispatch_semaphore_create(MAX_CLIENTS);
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        printf("%d\n", i);
         client_list[i].free = 1;
     }
 
@@ -210,14 +209,14 @@ int main() {
         n = recv(client_fd, &len, 1, 0);
         char username[MAX_NAME_LEN+1];
         n = recv(client_fd, &username, len, 0);
-        username[len] = '\0';
+        username[len-1] = '\0';
 
         printf("hello %s\n", username);
         // Register new thread
         client_list[openslot].fd = client_fd;
         client_list[openslot].free = 0;
-        strncpy(client_list[openslot].name, username, n);
-        client_list[openslot].name[n] = '\0';
+        strncpy(client_list[openslot].name, username, n-1);
+        client_list[openslot].name[n-1] = '\0';
 
         printf("hellowefwefwfe %s\n", client_list[openslot].name);
         client_list[openslot].color = 31+(rand() % 6);

@@ -66,10 +66,13 @@ int main() {
     printf("Enter username (max 16 chars): ");
     fflush(stdout);
     char *line = NULL;
-    int chars_to_read = read_n_string(&line, MAX_NAME_LEN);
+    int chars_to_read = read_n_string(&line, MAX_NAME_LEN)+1;
     if (chars_to_read == -1) {
         exit(1);
     }
+    printf("charstoread is %d\n", chars_to_read);
+    line[chars_to_read-1] = '\n';
+    printf("banana\n");
     send(socket_fd, &chars_to_read, 1, 0);
     send(socket_fd, line, chars_to_read, 0);
     free(line);
