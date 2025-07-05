@@ -87,7 +87,7 @@ void *handle_client(void *arg) {
     weq[w.ws_col] = '\n';
     char welcome[] = "Welcome to the chatroom!\nCurrent users:";
     pthread_mutex_lock(&shared_mem_lock);
-    send(client_fd, clrscrn, strlen(clrscrn), 0);
+    //send(client_fd, clrscrn, strlen(clrscrn), 0);
     send(client_fd, weq, w.ws_col+1, 0);
     send(client_fd, welcome, strlen(welcome), 0);
     for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -237,15 +237,20 @@ int main() {
         int n = recv(client_fd, &poke, 1, 0);
 
         // get username
-        char username[MAX_NAME_LEN];
-        n = recv(client_fd, &username, MAX_NAME_LEN-1, 0);
-        username[n] = '\0';
+        char username[MAX_NAME_LEN+1];
+        int len;
+        n = recv(client_fd, &len, 1, 0);
+        n = recv(client_fd, &username, len, 0);
+        username[len] = '\0';
 
         printf("hello %s\n", username);
         // Register new thread
         client_list[openslot].fd = client_fd;
         client_list[openslot].free = 0;
         strncpy(client_list[openslot].name, username, n);
+        client_list[openslot].name[n] = '\0';
+
+        printf("hellowefwefwfe %s\n", client_list[openslot].name);
         client_list[openslot].color = 31+(rand() % 6);
 
         pthread_mutex_unlock(&shared_mem_lock);

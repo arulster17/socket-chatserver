@@ -8,6 +8,27 @@
 
 #define MAX_NAME_LEN 16
 
+void read_string(char *s, int width)
+{
+    if (fgets(s, width, stdin) != 0)
+    {
+        size_t length = strlen(s);
+        if (length > 0 && s[length-1] != '\n')
+        {
+            printf("flushing\n");
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF)
+                ;
+        }
+        return;
+    }
+    else {
+        printf("idfk\n");
+        exit(1);
+    }
+
+}
+
 void print_peer_info(int sockfd) {
     struct sockaddr_in addr;
     socklen_t addr_len = sizeof(addr);
@@ -51,6 +72,7 @@ void *receive_loop(void *arg) {
 
 //int main(int argc, char const* argv[]) {
 int main() {
+
     // Set up client socket
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd == -1) {
@@ -59,15 +81,46 @@ int main() {
     }
     char username[MAX_NAME_LEN+1];
     printf("Enter username (max 16 chars): ");
-    fgets(username, MAX_NAME_LEN+1, stdin);
-    int user_len = strlen(username);
-    if(user_len > MAX_NAME_LEN) {
-        user_len = MAX_NAME_LEN;
+    fflush(stdout);
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read = getline(&line, &len, stdin);
+    // read = num letters + newline/eof
+    
+    if (read == -1) {
+        printf("read == -1\n");
+        exit(1);
     }
-    username[user_len] = '\0';
+    if (read > 0 && line[read - 1] == '\n') {
+            line[--read] = '\0';
+    }
+    int chars_to_read = MAX_NAME_LEN;
+    if (read < chars_to_read) {
+        chars_to_read = read;
+    }
+    // line is now the chars + \0
+
+    printf("read is %d\n", chars_to_read);
+
+
+    /*fgets(username, MAX_NAME_LEN+1, stdin);
+    int user_len = strlen(username);
+    
+    if (!strchr(username, '\n')) {
+        flush_stdin();
+    }
     while(username[user_len-1] == '\r' || username[user_len-1] == '\n') {
         username[--user_len] = '\n';
-    } 
+    }
+    username[user_len] = '\0';
+    printf("user len is %d\n", user_len);
+    read_string(username, MAX_NAME_LEN+1);
+    int user_len = strlen(username);
+    
+    printf("username is %s\n", username);
+    printf("user_len is %d\n", user_len);
+    */
+    int user_len = 16;
     // Connect to server
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
@@ -86,7 +139,11 @@ int main() {
 
     // set up username
     
-    send(socket_fd, username, user_len, 0);
+    printf("user_len is %d\n", user_len);
+    // send length
+    send(socket_fd, &chars_to_read, 1, 0);
+    send(socket_fd, line, chars_to_read, 0);
+    free(line);
 
     // Set up sending and receiving threads
     pthread_t send_thread, recv_thread;
