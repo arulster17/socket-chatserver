@@ -23,6 +23,7 @@ int read_n_string(char **line_ptr, int maxlen) {
     if (read < chars_to_read) {
         chars_to_read = read;
     }
+    line[chars_to_read] = '\0';
     return chars_to_read;
     // line is now the chars + \0
 }

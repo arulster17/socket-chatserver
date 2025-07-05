@@ -7,7 +7,7 @@ void *send_loop(void *arg) {
     char *msg = NULL;
     int chars_to_read;
 
-    while ((chars_to_read = read_n_string(&msg, -1)) > 0) {
+    while ((chars_to_read = read_n_string(&msg, -1)) >= 0) {
         printf("\033[F\033[K");
         msg[chars_to_read] = '\n';
         send(socket, msg, chars_to_read+1, 0);
@@ -66,12 +66,12 @@ int main() {
     printf("Enter username (max 16 chars): ");
     fflush(stdout);
     char *line = NULL;
-    int chars_to_read = read_n_string(&line, MAX_NAME_LEN)+1;
+    int chars_to_read = read_n_string(&line, MAX_NAME_LEN);
     if (chars_to_read == -1) {
         exit(1);
     }
-    printf("charstoread is %d\n", chars_to_read);
-    line[chars_to_read-1] = '\n';
+    line[chars_to_read] = '\n';
+    chars_to_read++;
     printf("banana\n");
     send(socket_fd, &chars_to_read, 1, 0);
     send(socket_fd, line, chars_to_read, 0);

@@ -4,7 +4,7 @@
 struct client_information {
     int fd;
     int free;
-    char name[MAX_NAME_LEN];
+    char name[MAX_NAME_LEN+1];
     int color;
 };
 
@@ -77,8 +77,8 @@ void *handle_client(void *arg) {
     int nl = '\n';
     send(client_fd, &nl, 1, 0);
 
+    printf("my name is %s\n", client_list[thread_id].name); 
     pthread_mutex_unlock(&shared_mem_lock);
-    
     free(weq);
 
     // listen for client messages constantly
@@ -207,16 +207,18 @@ int main() {
         // get username
         int len;
         n = recv(client_fd, &len, 1, 0);
+        printf("len is %d\n", len);
         char username[MAX_NAME_LEN+1];
         n = recv(client_fd, &username, len, 0);
+        // len = chars_to_read + '\n'
         username[len-1] = '\0';
 
         printf("hello %s\n", username);
         // Register new thread
         client_list[openslot].fd = client_fd;
         client_list[openslot].free = 0;
-        strncpy(client_list[openslot].name, username, n-1);
-        client_list[openslot].name[n-1] = '\0';
+        strncpy(client_list[openslot].name, username, n);
+        client_list[openslot].name[n] = '\0';
 
         printf("hellowefwefwfe %s\n", client_list[openslot].name);
         client_list[openslot].color = 31+(rand() % 6);
