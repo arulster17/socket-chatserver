@@ -35,8 +35,20 @@ void *receive_loop(void *arg) {
 }
 
 
-//int main(int argc, char const* argv[]) {
-int main() {
+int main(int argc, char const* argv[]) {
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <IP> <port>\n", argv[0]);
+        return 1;
+    }
+
+    const char *ip_str = argv[1];
+    const char *port_str = argv[2];
+
+    int port = atoi(port_str);
+    if (port <= 0 || port > 65535) {
+        printf("Invalid port number: %s\n", port_str);
+        exit(1);
+    }
 
     // Set up client socket
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -48,10 +60,11 @@ int main() {
     // Connect to server
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(8080); // use same port as server
-    //inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr);
-    //inet_pton(AF_INET, "24.6.51.191", &server_addr.sin_addr);
-    inet_pton(AF_INET, "192.168.86.133", &server_addr.sin_addr);
+    server_addr.sin_port = htons(port); // use same port as server
+    //inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr); // localhost
+    //inet_pton(AF_INET, "24.6.51.191", &server_addr.sin_addr); // home public
+    //inet_pton(AF_INET, "192.168.86.133", &server_addr.sin_addr); // home private
+    inet_pton(AF_INET, ip_str, &server_addr.sin_addr); // milan private
 
     connect(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
     

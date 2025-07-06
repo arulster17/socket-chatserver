@@ -33,7 +33,7 @@ void sigint_handler(int arg) {
     }
     pthread_mutex_unlock(&shared_mem_lock);
     pthread_mutex_destroy(&shared_mem_lock);
-    exit(0);
+    exit(arg);
 }
 
 void *handle_client(void *arg) {
@@ -47,6 +47,17 @@ void *handle_client(void *arg) {
     char buffer[1000];
     char buffer2[2000];
    
+    // get username
+    int len;
+    n = recv(client_fd, &len, 1, 0);
+    printf("len is %d\n", len);
+    char username[MAX_NAME_LEN+1];
+    n = recv(client_fd, &username, len, 0);
+    // len = chars_to_read + '\n'
+    username[len-1] = '\0';
+ 
+
+    
     // clear screen and make welcome bar
     char clrscrn[] = "\033[2J\033[H";
     struct winsize w;
@@ -55,10 +66,17 @@ void *handle_client(void *arg) {
     memset(weq, '=', w.ws_col);
     weq[w.ws_col] = '\n';
     char welcome[] = "Welcome to the chatroom!\nCurrent users:";
+    
     pthread_mutex_lock(&shared_mem_lock);
-    //send(client_fd, clrscrn, strlen(clrscrn), 0);
+    
+    strncpy(client_list[thread_id].name, username, n);
+    client_list[thread_id].name[n] = '\0';
+
+    send(client_fd, clrscrn, strlen(clrscrn), 0);
     send(client_fd, weq, w.ws_col+1, 0);
     send(client_fd, welcome, strlen(welcome), 0);
+    
+
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (!client_list[i].free) {
             snprintf(buffer2, sizeof(buffer2), " \033[1;%dm%s\033[0m", 
@@ -182,8 +200,17 @@ int main() {
         int client_fd = accept(server_fd, (struct sockaddr*) &client_addr, &client_addrlen);
         printf("accepted \n");
         // Given we are here, there must be an open client slot, find first
-        int openslot = 0;
         
+        // handle poke
+        char poke;
+        int n = recv(client_fd, &poke, 1, 0);
+        if (n == -1) {
+            printf("poke failed");
+            dispatch_semaphore_signal(client_slots);
+            close(client_fd);
+        }
+                
+        int openslot = 0;
         pthread_mutex_lock(&shared_mem_lock);
         while (openslot < MAX_CLIENTS) {
             printf("checking slot %d\n", openslot);
@@ -197,30 +224,13 @@ int main() {
             // Something wacky has happened
             printf("openslot == MAX_CLIENTS\n");
             raise(SIGINT);
-            // this is called good code
         }
         
-        // handle poke
-        char poke;
-        int n = recv(client_fd, &poke, 1, 0);
+        
 
-        // get username
-        int len;
-        n = recv(client_fd, &len, 1, 0);
-        printf("len is %d\n", len);
-        char username[MAX_NAME_LEN+1];
-        n = recv(client_fd, &username, len, 0);
-        // len = chars_to_read + '\n'
-        username[len-1] = '\0';
-
-        printf("hello %s\n", username);
         // Register new thread
         client_list[openslot].fd = client_fd;
         client_list[openslot].free = 0;
-        strncpy(client_list[openslot].name, username, n);
-        client_list[openslot].name[n] = '\0';
-
-        printf("hellowefwefwfe %s\n", client_list[openslot].name);
         client_list[openslot].color = 31+(rand() % 6);
 
         pthread_mutex_unlock(&shared_mem_lock);
