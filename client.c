@@ -10,6 +10,12 @@ void *send_loop(void *arg) {
     while ((chars_to_read = read_n_string(&msg, -1)) >= 0) {
         printf("\033[F\033[K");
         msg[chars_to_read] = '\n';
+        for (int i = 0; i < chars_to_read; i++) {
+            // strip bad stuff
+            if (msg[i] < 32) {
+                msg[i] = 32; 
+            }
+        }
         send(socket, msg, chars_to_read+1, 0);
         free(msg);
         msg = NULL;
