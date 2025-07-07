@@ -107,7 +107,8 @@ int main(int argc, char const* argv[]) {
     pthread_create(&send_thread, NULL, send_loop, &socket_fd);
     pthread_create(&recv_thread, NULL, receive_loop, &socket_fd);
 
-
+    // Hate to be that guy but i'm not really sure why we need these
+    // But it breaks without them LOL
     pthread_join(send_thread, NULL);
     pthread_join(recv_thread, NULL);
 }

@@ -158,6 +158,9 @@ void *handle_client(void *arg) {
 }
 
 int main(int argc, char const* argv[]) {
+    // Set up SIGINT handler
+    signal(SIGINT, sigint_handler);
+
     // Input handling stuff
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <port>\n", argv[0]);
@@ -182,9 +185,16 @@ int main(int argc, char const* argv[]) {
         client_list[i].free = 1;
     }
 
-    // Set up SIGINT handler
-    signal(SIGINT, sigint_handler);
-    
+    // Hello to the server!
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    char *weq = (char *) malloc(w.ws_col+1);
+    memset(weq, '=', w.ws_col);
+    weq[w.ws_col] = '\0';
+    printf("%s\n", weq);
+    printf("Chatroom started!\n");
+    free(weq);
+
     // Set up server socket
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;

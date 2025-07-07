@@ -29,5 +29,13 @@ These are just a few issues I know are still there. If there's any new ones you 
 - user can just send empty newlines in chat to spam
 - no moderation filter (womp womp)
 - weird behavior when user input has newlines (like pasting a paragraph)
+- wrong behavior in the following situation. the fix shouldn't be too hard but it isn't worth the time
+    1) User 1 joins and enters username A
+    2) User 1 leaves
+    3) User 2 joins
+    4) User 3 joins
+    5) User 3 enters username B
+    6) User 3 now sees `Current Users: A C`
+
 
 ### Thanks for reading!
