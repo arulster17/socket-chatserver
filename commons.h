@@ -15,7 +15,6 @@
 #include <unistd.h>
 
 
-#define PORT 8080
 #define MAX_CLIENTS 10
 #define MAX_NAME_LEN 16
 

@@ -156,7 +156,20 @@ void *handle_client(void *arg) {
 }
 
 //int main(int argc, char const* argv[]) {
-int main() {
+int main(int argc, char const* argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
+        return 1;
+    }
+
+    const char *port_str = argv[1];
+
+    int port = atoi(port_str);
+    if (port <= 0 || port > 65535) {
+        printf("Invalid port number: %s\n", port_str);
+        exit(1);
+    }
+    
     // Seed random
     srand(time(NULL));
 
@@ -176,7 +189,7 @@ int main() {
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(PORT);
+    addr.sin_port = htons(port);
     int opt = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     bind(server_fd, (const struct sockaddr *) &addr, sizeof(addr));
