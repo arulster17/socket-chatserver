@@ -67,10 +67,7 @@ int main(int argc, char const* argv[]) {
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port); // use same port as server
-    //inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr); // localhost
-    //inet_pton(AF_INET, "24.6.51.191", &server_addr.sin_addr); // home public
-    //inet_pton(AF_INET, "192.168.86.133", &server_addr.sin_addr); // home private
-    inet_pton(AF_INET, ip_str, &server_addr.sin_addr); // milan private
+    inet_pton(AF_INET, ip_str, &server_addr.sin_addr); 
 
     connect(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
     
