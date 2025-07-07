@@ -1,17 +1,19 @@
 // client code
 #include "commons.h"
 
+// This thread handles clients sending messages 
 void *send_loop(void *arg) {
     int socket = *(int*) arg;
-    
+
     char *msg = NULL;
     int chars_to_read;
 
     while ((chars_to_read = read_n_string(&msg, -1)) >= 0) {
+        // Read in input, basic filter, send the input
         printf("\033[F\033[K");
         msg[chars_to_read] = '\n';
         for (int i = 0; i < chars_to_read; i++) {
-            // strip bad stuff
+            // strip ascii 0-31 because they are bad news
             if (msg[i] < 32) {
                 msg[i] = 32; 
             }
@@ -27,7 +29,9 @@ void *send_loop(void *arg) {
     return NULL;
 }
 
+// This thread handles clients receiving messages.
 void *receive_loop(void *arg) {
+    // Recv input, and just print to stdout
     int socket = *(int*) arg;
     char buffer[1024];
     int n;
@@ -35,6 +39,8 @@ void *receive_loop(void *arg) {
         buffer[n] = '\0';
         printf("%s", buffer);
     }
+    
+    // If the server disconnects this runs
     printf("Server disconnected.\n");
     close(socket);
     exit(0);
@@ -42,6 +48,7 @@ void *receive_loop(void *arg) {
 
 
 int main(int argc, char const* argv[]) {
+    // Input handling stuff
     if (argc != 3) {
         fprintf(stderr, "Usage: %s <IP> <port>\n", argv[0]);
         return 1;
@@ -78,12 +85,14 @@ int main(int argc, char const* argv[]) {
     send(socket_fd, &poke, 1, 0);
 
     // set up username
-    // send length
+    // send length first
     printf("Enter username (max 16 chars): ");
     fflush(stdout);
     char *line = NULL;
     int chars_to_read = read_n_string(&line, MAX_NAME_LEN);
     if (chars_to_read == -1) {
+        // weird stuff happened while reading username
+        close(socket_fd);
         exit(1);
     }
     line[chars_to_read] = '\n';
@@ -98,8 +107,7 @@ int main(int argc, char const* argv[]) {
     pthread_create(&send_thread, NULL, send_loop, &socket_fd);
     pthread_create(&recv_thread, NULL, receive_loop, &socket_fd);
 
-    
-    // Wait for threads to finish i guess
+
     pthread_join(send_thread, NULL);
     pthread_join(recv_thread, NULL);
 }

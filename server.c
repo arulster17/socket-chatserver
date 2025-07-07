@@ -1,6 +1,7 @@
 // server code
 #include "commons.h"
 
+// struct containing information for a given client
 struct client_information {
     int fd;
     int free;
@@ -8,17 +9,19 @@ struct client_information {
     int color;
 };
 
+// arguments passed to start a handle_client thread
 struct threadargs {
     int fd;
     int id;
 };
 
+// shared memory and synchronization stuff
 int server_fd;
 struct client_information client_list[MAX_CLIENTS];
 dispatch_semaphore_t client_slots;
 pthread_mutex_t shared_mem_lock;
 
-
+// handle server sigint cleanly
 void sigint_handler(int arg) {
     printf("\nShutting down the server...\n");
     close(server_fd);
@@ -35,9 +38,8 @@ void sigint_handler(int arg) {
     exit(arg);
 }
 
+// This will be called whenever a new client connects
 void *handle_client(void *arg) {
-    // This will be called whenever a new client connects
-    // arg will have the client fd
     struct threadargs *t_args = (struct threadargs *) arg;
     int client_fd = t_args->fd;
     int thread_id = t_args->id;
@@ -65,10 +67,12 @@ void *handle_client(void *arg) {
     char welcome[] = "Welcome to the chatroom!\nCurrent users:";
     
     pthread_mutex_lock(&shared_mem_lock);
-    
+
+    // write username to the shared memory
     strncpy(client_list[thread_id].name, username, n);
     client_list[thread_id].name[n] = '\0';
 
+    // print out the clearscreen and welcome bar
     send(client_fd, clrscrn, strlen(clrscrn), 0);
     send(client_fd, weq, w.ws_col+1, 0);
     send(client_fd, welcome, strlen(welcome), 0);
@@ -76,6 +80,7 @@ void *handle_client(void *arg) {
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (!client_list[i].free) {
+            // Print users that are already in the room
             snprintf(buffer2, sizeof(buffer2), " \033[1;%dm%s\033[0m", 
                         client_list[i].color, client_list[i].name);
             send(client_fd, buffer2, strlen(buffer2), 0);
@@ -89,6 +94,8 @@ void *handle_client(void *arg) {
             }
         }
     }
+
+    // Write in the server log that you joined
     printf(">>> \033[1;%dm%s\033[0m joined the room\n", 
                         client_list[thread_id].color, client_list[thread_id].name);
 
@@ -104,12 +111,12 @@ void *handle_client(void *arg) {
         buffer[n] = '\0';
         
         pthread_mutex_lock(&shared_mem_lock);
+        
+        // log message in the server window
         printf("\033[1;%dm%s\033[0m: %s", 
                 client_list[thread_id].color, client_list[thread_id].name, buffer);
-        // Reflect message
-        //send(client_fd, buffer, strlen(buffer), 0);
 
-        // send message to other clients
+        // send message to all clients
         for (int i = 0; i < MAX_CLIENTS; i++) {
             if(!client_list[i].free) {
                 snprintf(buffer2, sizeof(buffer2), "\033[1;%dm%s\033[0m: %s", 
@@ -122,21 +129,21 @@ void *handle_client(void *arg) {
         pthread_mutex_unlock(&shared_mem_lock);
 
     }
-    // Connection closed
-    printf("\033[1;%dm%s\033[0m disconnected\n", 
-            client_list[thread_id].color, client_list[thread_id].name);
-   
+    
+    // Connection closed by client
     // Mark slot available and notify others
     pthread_mutex_lock(&shared_mem_lock);
     client_list[thread_id].free = 1;
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (!client_list[i].free) {
+            // notify othere clients
             snprintf(buffer2, sizeof(buffer2), "<<< \033[1;%dm%s\033[0m left the room\n", 
                     client_list[thread_id].color, client_list[thread_id].name);
             send(client_list[i].fd, buffer2, strlen(buffer2), 0);
         }
     }
 
+    // log disconnection to server
     printf("<<< \033[1;%dm%s\033[0m left the room\n", 
                     client_list[thread_id].color, client_list[thread_id].name);
 
@@ -150,8 +157,8 @@ void *handle_client(void *arg) {
 
 }
 
-//int main(int argc, char const* argv[]) {
 int main(int argc, char const* argv[]) {
+    // Input handling stuff
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <port>\n", argv[0]);
         return 1;
@@ -192,21 +199,18 @@ int main(int argc, char const* argv[]) {
     listen(server_fd, 5);
 
 
-    // Accept client connection
+    // Accept client connection loop
     struct sockaddr_in client_addr;
     socklen_t client_addrlen = sizeof(client_addr);
     while(1) {
         // Wait for an open slot
-        //printf("%d waiting for open slot\n", cnt);
         dispatch_semaphore_wait(client_slots, DISPATCH_TIME_FOREVER);
-        //printf("%d got open slot\n", cnt);
 
         // Build thread and arguments
         pthread_t handle_client_thread;
         int client_fd = accept(server_fd, (struct sockaddr*) &client_addr, &client_addrlen);
-        // Given we are here, there must be an open client slot, find first
         
-        // handle poke
+        // poke the client to ensure handshake finishes
         char poke;
         int n = recv(client_fd, &poke, 1, 0);
         if (n == -1) {
@@ -215,11 +219,10 @@ int main(int argc, char const* argv[]) {
             close(client_fd);
         }
                 
+        // Given we are here, there must be an open client slot, find first
         int openslot = 0;
         pthread_mutex_lock(&shared_mem_lock);
         while (openslot < MAX_CLIENTS) {
-            //printf("checking slot %d\n", openslot);
-            //printf("value is %d\n", client_list[openslot].free);
             if(client_list[openslot].free) {
                 break;
             }
@@ -243,13 +246,11 @@ int main(int argc, char const* argv[]) {
         struct threadargs *ta_ptr = malloc(sizeof(struct threadargs));
         ta_ptr->fd=client_fd;
         ta_ptr->id=openslot;
-        //ta_ptr->name=cnt;
 
         // if this deadlocks i will cry
 
         pthread_create(&handle_client_thread, NULL, handle_client, ta_ptr);
 
-        //printf("%d connected to server\n", cnt);
     }
 }
 

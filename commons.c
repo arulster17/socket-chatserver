@@ -41,5 +41,5 @@ void print_peer_info(int sockfd) {
     inet_ntop(AF_INET, &(addr.sin_addr), ip_str, sizeof(ip_str));
     int port = ntohs(addr.sin_port);
 
-    printf("Socket %d connected to %s:%d\n", sockfd, ip_str, port);
+    printf("Connected to %s:%d\n", ip_str, port);
 }
